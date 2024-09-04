@@ -6,7 +6,7 @@ import (
 	"github.com/99designs/gqlgen/graphql"
 )
 
-func Calculate(es graphql.ExecutableSchema, op *ast.OperationDefinition, vars map[string]any) int {
+func Calculate(es graphql.ExecutableSchema, op *ast.OperationDefinition, vars map[string]interface{}) int {
 	walker := complexityWalker{
 		es:     es,
 		schema: es.Schema(),
@@ -18,7 +18,7 @@ func Calculate(es graphql.ExecutableSchema, op *ast.OperationDefinition, vars ma
 type complexityWalker struct {
 	es     graphql.ExecutableSchema
 	schema *ast.Schema
-	vars   map[string]any
+	vars   map[string]interface{}
 }
 
 func (cw complexityWalker) selectionSetComplexity(selectionSet ast.SelectionSet) int {
@@ -57,7 +57,7 @@ func (cw complexityWalker) selectionSetComplexity(selectionSet ast.SelectionSet)
 	return complexity
 }
 
-func (cw complexityWalker) interfaceFieldComplexity(def *ast.Definition, field string, childComplexity int, args map[string]any) int {
+func (cw complexityWalker) interfaceFieldComplexity(def *ast.Definition, field string, childComplexity int, args map[string]interface{}) int {
 	// Interfaces don't have their own separate field costs, so they have to assume the worst case.
 	// We iterate over all implementors and choose the most expensive one.
 	maxComplexity := 0
@@ -71,7 +71,7 @@ func (cw complexityWalker) interfaceFieldComplexity(def *ast.Definition, field s
 	return maxComplexity
 }
 
-func (cw complexityWalker) fieldComplexity(object, field string, childComplexity int, args map[string]any) int {
+func (cw complexityWalker) fieldComplexity(object, field string, childComplexity int, args map[string]interface{}) int {
 	if customComplexity, ok := cw.es.Complexity(object, field, childComplexity, args); ok && customComplexity >= childComplexity {
 		return customComplexity
 	}

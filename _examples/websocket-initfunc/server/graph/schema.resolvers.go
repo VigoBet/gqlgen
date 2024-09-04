@@ -25,7 +25,5 @@ func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 // Subscription returns SubscriptionResolver implementation.
 func (r *Resolver) Subscription() SubscriptionResolver { return &subscriptionResolver{r} }
 
-type (
-	mutationResolver     struct{ *Resolver }
-	subscriptionResolver struct{ *Resolver }
-)
+type mutationResolver struct{ *Resolver }
+type subscriptionResolver struct{ *Resolver }

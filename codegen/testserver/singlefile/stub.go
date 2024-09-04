@@ -75,7 +75,6 @@ type Stub struct {
 		DeferCase2                       func(ctx context.Context) ([]*DeferModel, error)
 		DirectiveArg                     func(ctx context.Context, arg string) (*string, error)
 		DirectiveNullableArg             func(ctx context.Context, arg *int, arg2 *int, arg3 *string) (*string, error)
-		DirectiveSingleNullableArg       func(ctx context.Context, arg1 *string) (*string, error)
 		DirectiveInputNullable           func(ctx context.Context, arg *InputDirectives) (*string, error)
 		DirectiveInput                   func(ctx context.Context, arg InputDirectives) (*string, error)
 		DirectiveInputType               func(ctx context.Context, arg InnerInput) (*string, error)
@@ -85,7 +84,6 @@ type Stub struct {
 		DirectiveField                   func(ctx context.Context) (*string, error)
 		DirectiveDouble                  func(ctx context.Context) (*string, error)
 		DirectiveUnimplemented           func(ctx context.Context) (*string, error)
-		DirectiveConcurrent              func(ctx context.Context) ([]*ObjectDirectivesConcurrent, error)
 		EmbeddedCase1                    func(ctx context.Context) (*EmbeddedCase1, error)
 		EmbeddedCase2                    func(ctx context.Context) (*EmbeddedCase2, error)
 		EmbeddedCase3                    func(ctx context.Context) (*EmbeddedCase3, error)
@@ -365,9 +363,6 @@ func (r *stubQuery) DirectiveArg(ctx context.Context, arg string) (*string, erro
 func (r *stubQuery) DirectiveNullableArg(ctx context.Context, arg *int, arg2 *int, arg3 *string) (*string, error) {
 	return r.QueryResolver.DirectiveNullableArg(ctx, arg, arg2, arg3)
 }
-func (r *stubQuery) DirectiveSingleNullableArg(ctx context.Context, arg1 *string) (*string, error) {
-	return r.QueryResolver.DirectiveSingleNullableArg(ctx, arg1)
-}
 func (r *stubQuery) DirectiveInputNullable(ctx context.Context, arg *InputDirectives) (*string, error) {
 	return r.QueryResolver.DirectiveInputNullable(ctx, arg)
 }
@@ -394,9 +389,6 @@ func (r *stubQuery) DirectiveDouble(ctx context.Context) (*string, error) {
 }
 func (r *stubQuery) DirectiveUnimplemented(ctx context.Context) (*string, error) {
 	return r.QueryResolver.DirectiveUnimplemented(ctx)
-}
-func (r *stubQuery) DirectiveConcurrent(ctx context.Context) ([]*ObjectDirectivesConcurrent, error) {
-	return r.QueryResolver.DirectiveConcurrent(ctx)
 }
 func (r *stubQuery) EmbeddedCase1(ctx context.Context) (*EmbeddedCase1, error) {
 	return r.QueryResolver.EmbeddedCase1(ctx)

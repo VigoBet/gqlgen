@@ -63,6 +63,7 @@ func (r *Rewriter) getFile(filename string) string {
 		}
 
 		r.files[filename] = string(b)
+
 	}
 
 	return r.files[filename]

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"go/token"
 	"go/types"
-	"strings"
 
 	"github.com/vektah/gqlparser/v2/ast"
 	"golang.org/x/tools/go/packages"
@@ -61,7 +60,7 @@ func (b *Binder) FindTypeFromName(name string) (types.Type, error) {
 	return b.FindType(pkgName, typeName)
 }
 
-func (b *Binder) FindType(pkgName, typeName string) (types.Type, error) {
+func (b *Binder) FindType(pkgName string, typeName string) (types.Type, error) {
 	if pkgName == "" {
 		if typeName == "map[string]interface{}" {
 			return MapType, nil
@@ -99,7 +98,7 @@ var (
 func (b *Binder) DefaultUserObject(name string) (types.Type, error) {
 	models := b.cfg.Models[name].Model
 	if len(models) == 0 {
-		return nil, fmt.Errorf("%s not found in typemap", name)
+		return nil, fmt.Errorf(name + " not found in typemap")
 	}
 
 	if models[0] == "map[string]interface{}" {
@@ -123,9 +122,9 @@ func (b *Binder) DefaultUserObject(name string) (types.Type, error) {
 	return obj.Type(), nil
 }
 
-func (b *Binder) FindObject(pkgName, typeName string) (types.Object, error) {
+func (b *Binder) FindObject(pkgName string, typeName string) (types.Object, error) {
 	if pkgName == "" {
-		return nil, errors.New("package cannot be nil")
+		return nil, fmt.Errorf("package cannot be nil")
 	}
 
 	pkg := b.pkgs.LoadWithTypes(pkgName)
@@ -193,19 +192,18 @@ func (b *Binder) PointerTo(ref *TypeReference) *TypeReference {
 
 // TypeReference is used by args and field types. The Definition can refer to both input and output types.
 type TypeReference struct {
-	Definition               *ast.Definition
-	GQL                      *ast.Type
-	GO                       types.Type  // Type of the field being bound. Could be a pointer or a value type of Target.
-	Target                   types.Type  // The actual type that we know how to bind to. May require pointer juggling when traversing to fields.
-	CastType                 types.Type  // Before calling marshalling functions cast from/to this base type
-	Marshaler                *types.Func // When using external marshalling functions this will point to the Marshal function
-	Unmarshaler              *types.Func // When using external marshalling functions this will point to the Unmarshal function
-	IsMarshaler              bool        // Does the type implement graphql.Marshaler and graphql.Unmarshaler
-	IsOmittable              bool        // Is the type wrapped with Omittable
-	IsContext                bool        // Is the Marshaler/Unmarshaller the context version; applies to either the method or interface variety.
-	PointersInUnmarshalInput bool        // Inverse values and pointers in return.
-	IsRoot                   bool        // Is the type a root level definition such as Query, Mutation or Subscription
-	EnumValues               []EnumValueReference
+	Definition              *ast.Definition
+	GQL                     *ast.Type
+	GO                      types.Type  // Type of the field being bound. Could be a pointer or a value type of Target.
+	Target                  types.Type  // The actual type that we know how to bind to. May require pointer juggling when traversing to fields.
+	CastType                types.Type  // Before calling marshalling functions cast from/to this base type
+	Marshaler               *types.Func // When using external marshalling functions this will point to the Marshal function
+	Unmarshaler             *types.Func // When using external marshalling functions this will point to the Unmarshal function
+	IsMarshaler             bool        // Does the type implement graphql.Marshaler and graphql.Unmarshaler
+	IsOmittable             bool        // Is the type wrapped with Omittable
+	IsContext               bool        // Is the Marshaler/Unmarshaller the context version; applies to either the method or interface variety.
+	PointersInUmarshalInput bool        // Inverse values and pointers in return.
+	IsRoot                  bool        // Is the type a root level definition such as Query, Mutation or Subscription
 }
 
 func (ref *TypeReference) Elem() *TypeReference {
@@ -323,10 +321,6 @@ func (ref *TypeReference) IsTargetNilable() bool {
 	return IsNilable(ref.Target)
 }
 
-func (ref *TypeReference) HasEnumValues() bool {
-	return len(ref.EnumValues) > 0
-}
-
 func (b *Binder) PushRef(ret *TypeReference) {
 	b.References = append(b.References, ret)
 }
@@ -349,7 +343,7 @@ func isIntf(t types.Type) bool {
 
 func unwrapOmittable(t types.Type) (types.Type, bool) {
 	if t == nil {
-		return nil, false
+		return t, false
 	}
 	named, ok := t.(*types.Named)
 	if !ok {
@@ -434,12 +428,7 @@ func (b *Binder) TypeReference(schemaType *ast.Type, bindTarget types.Type) (ret
 			return nil, err
 		}
 
-		if values := b.enumValues(def); len(values) > 0 {
-			err = b.enumReference(ref, obj, values)
-			if err != nil {
-				return nil, err
-			}
-		} else if fun, isFunc := obj.(*types.Func); isFunc {
+		if fun, isFunc := obj.(*types.Func); isFunc {
 			ref.GO = fun.Type().(*types.Signature).Params().At(0).Type()
 			ref.IsContext = fun.Type().(*types.Signature).Results().At(0).Type().String() == "github.com/99designs/gqlgen/graphql.ContextMarshaler"
 			ref.Marshaler = fun
@@ -478,7 +467,7 @@ func (b *Binder) TypeReference(schemaType *ast.Type, bindTarget types.Type) (ret
 			ref.GO = bindTarget
 		}
 
-		ref.PointersInUnmarshalInput = b.cfg.ReturnPointersInUnmarshalInput
+		ref.PointersInUmarshalInput = b.cfg.ReturnPointersInUmarshalInput
 
 		return ref, nil
 	}
@@ -555,84 +544,6 @@ func basicUnderlying(it types.Type) *types.Basic {
 
 	if basic, ok := namedType.Underlying().(*types.Basic); ok {
 		return basic
-	}
-
-	return nil
-}
-
-type EnumValueReference struct {
-	Definition *ast.EnumValueDefinition
-	Object     types.Object
-}
-
-func (b *Binder) enumValues(def *ast.Definition) map[string]EnumValue {
-	if def.Kind != ast.Enum {
-		return nil
-	}
-
-	if strings.HasPrefix(def.Name, "__") {
-		return nil
-	}
-
-	model, ok := b.cfg.Models[def.Name]
-	if !ok {
-		return nil
-	}
-
-	return model.EnumValues
-}
-
-func (b *Binder) enumReference(ref *TypeReference, obj types.Object, values map[string]EnumValue) error {
-	if len(ref.Definition.EnumValues) != len(values) {
-		return fmt.Errorf("not all enum values are binded for %v", ref.Definition.Name)
-	}
-
-	if fn, ok := obj.Type().(*types.Signature); ok {
-		ref.GO = fn.Params().At(0).Type()
-	} else {
-		ref.GO = obj.Type()
-	}
-
-	str, err := b.TypeReference(&ast.Type{NamedType: "String"}, nil)
-	if err != nil {
-		return err
-	}
-
-	ref.Marshaler = str.Marshaler
-	ref.Unmarshaler = str.Unmarshaler
-	ref.EnumValues = make([]EnumValueReference, 0, len(values))
-
-	for _, value := range ref.Definition.EnumValues {
-		v, ok := values[value.Name]
-		if !ok {
-			return fmt.Errorf("enum value not found for: %v, of enum: %v", value.Name, ref.Definition.Name)
-		}
-
-		pkgName, typeName := code.PkgAndType(v.Value)
-		if pkgName == "" {
-			return fmt.Errorf("missing package name for %v", value.Name)
-		}
-
-		valueObj, err := b.FindObject(pkgName, typeName)
-		if err != nil {
-			return err
-		}
-
-		if !types.AssignableTo(valueObj.Type(), ref.GO) {
-			return fmt.Errorf("wrong type: %v, for enum value: %v, expected type: %v, of enum: %v",
-				valueObj.Type(), value.Name, ref.GO, ref.Definition.Name)
-		}
-
-		switch valueObj.(type) {
-		case *types.Const, *types.Var:
-			ref.EnumValues = append(ref.EnumValues, EnumValueReference{
-				Definition: value,
-				Object:     valueObj,
-			})
-		default:
-			return fmt.Errorf("unsupported enum value for: %v, of enum: %v, only const and var allowed",
-				value.Name, ref.Definition.Name)
-		}
 	}
 
 	return nil

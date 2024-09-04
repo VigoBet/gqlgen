@@ -13,4 +13,3 @@ resolver:
   layout: follow-schema
   dir: testdata/explicitrequires
   package: explicitrequires
-omit_complexity: true

@@ -10,20 +10,18 @@ func (ec *executionContext) _{{$object.Name}}_{{$field.Name}}(ctx context.Contex
 		return {{ $null }}
 	}
 	ctx = graphql.WithFieldContext(ctx, fc)
-	{{- if not $.Config.OmitPanicHandler }}
 	defer func () {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
 			ret = {{ $null }}
 		}
 	}()
-	{{- end }}
 	{{- if $field.TypeReference.IsRoot }}
 		{{- if $field.TypeReference.IsPtr }}
 			res := &{{ $field.TypeReference.Elem.GO | ref }}{}
 		{{- else }}
 			res := {{ $field.TypeReference.GO | ref }}{}
-		{{- end }}
+		{{- end }} 
 		fc.Result = res
 		return ec.{{ $field.TypeReference.MarshalFunc }}(ctx, field.Selections, res)
 	{{- else}}
@@ -74,7 +72,7 @@ func (ec *executionContext) _{{$object.Name}}_{{$field.Name}}(ctx context.Contex
 	{{- end }}
 }
 
-func (ec *executionContext) {{ $field.FieldContextFunc }}({{ if not $field.Args }}_{{ else }}ctx{{ end }} context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) {{ $field.FieldContextFunc }}(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object: {{quote $field.Object.Name}},
 		Field: field,
@@ -97,14 +95,12 @@ func (ec *executionContext) {{ $field.FieldContextFunc }}({{ if not $field.Args 
 		},
 	}
 	{{- if $field.Args }}
-		{{- if not $.Config.OmitPanicHandler }}
 		defer func () {
 			if r := recover(); r != nil {
 				err = ec.Recover(ctx, r)
 				ec.Error(ctx, err)
 			}
 		}()
-		{{- end }}
 		ctx = graphql.WithFieldContext(ctx, fc)
 		if fc.Args, err = ec.{{ $field.ArgsFunc }}(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 			ec.Error(ctx, err)

@@ -39,7 +39,7 @@ func (a *Tracer) Validate(schema graphql.ExecutableSchema) error {
 	return nil
 }
 
-func stringify(value any) string {
+func stringify(value interface{}) string {
 	valueJson, err := json.MarshalIndent(value, "  ", "  ")
 	if err == nil {
 		return string(valueJson)

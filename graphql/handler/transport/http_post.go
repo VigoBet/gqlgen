@@ -27,10 +27,6 @@ func (h POST) Supports(r *http.Request) bool {
 		return false
 	}
 
-	if strings.Contains(r.Header.Get("Accept"), "text/event-stream") {
-		return false
-	}
-
 	mediaType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
 	if err != nil {
 		return false
@@ -82,10 +78,10 @@ func (h POST) Do(w http.ResponseWriter, r *http.Request, exec graphql.GraphExecu
 		return
 	}
 
-	rc, opErr := exec.CreateOperationContext(ctx, params)
-	if opErr != nil {
-		w.WriteHeader(statusFor(opErr))
-		resp := exec.DispatchError(graphql.WithOperationContext(ctx, rc), opErr)
+	rc, OpErr := exec.CreateOperationContext(ctx, params)
+	if OpErr != nil {
+		w.WriteHeader(statusFor(OpErr))
+		resp := exec.DispatchError(graphql.WithOperationContext(ctx, rc), OpErr)
 		writeJson(w, resp)
 		return
 	}

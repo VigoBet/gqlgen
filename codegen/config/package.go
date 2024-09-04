@@ -1,7 +1,7 @@
 package config
 
 import (
-	"errors"
+	"fmt"
 	"go/types"
 	"path/filepath"
 	"strings"
@@ -44,13 +44,13 @@ func (c *PackageConfig) IsDefined() bool {
 
 func (c *PackageConfig) Check() error {
 	if strings.ContainsAny(c.Package, "./\\") {
-		return errors.New("package should be the output package name only, do not include the output filename")
+		return fmt.Errorf("package should be the output package name only, do not include the output filename")
 	}
 	if c.Filename == "" {
-		return errors.New("filename must be specified")
+		return fmt.Errorf("filename must be specified")
 	}
 	if !strings.HasSuffix(c.Filename, ".go") {
-		return errors.New("filename should be path to a go source file")
+		return fmt.Errorf("filename should be path to a go source file")
 	}
 
 	c.Filename = abs(c.Filename)

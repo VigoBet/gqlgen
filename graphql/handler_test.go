@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 
 func TestAddUploadToOperations(t *testing.T) {
@@ -23,13 +22,14 @@ func TestAddUploadToOperations(t *testing.T) {
 		}
 		path := "variables.req.0.file"
 		err := params.AddUpload(upload, key, path)
-		require.EqualError(t, err, "input: path is missing \"variables.\" prefix, key: 0, path: variables.req.0.file")
+		require.NotNil(t, err)
+		require.Equal(t, "input: path is missing \"variables.\" prefix, key: 0, path: variables.req.0.file", err.Error())
 	})
 
 	t.Run("valid variable", func(t *testing.T) {
 		file, _ := os.Open("path/to/file")
 		request := &RawParams{
-			Variables: map[string]any{
+			Variables: map[string]interface{}{
 				"file": nil,
 			},
 		}
@@ -42,24 +42,24 @@ func TestAddUploadToOperations(t *testing.T) {
 		}
 
 		expected := &RawParams{
-			Variables: map[string]any{
+			Variables: map[string]interface{}{
 				"file": upload,
 			},
 		}
 
 		path := "variables.file"
 		err := request.AddUpload(upload, key, path)
-		require.Equal(t, (*gqlerror.Error)(nil), err)
+		require.Nil(t, err)
 
-		require.Equal(t, expected, request)
+		require.Equal(t, request, expected)
 	})
 
 	t.Run("valid nested variable", func(t *testing.T) {
 		file, _ := os.Open("path/to/file")
 		request := &RawParams{
-			Variables: map[string]any{
-				"req": []any{
-					map[string]any{
+			Variables: map[string]interface{}{
+				"req": []interface{}{
+					map[string]interface{}{
 						"file": nil,
 					},
 				},
@@ -74,9 +74,9 @@ func TestAddUploadToOperations(t *testing.T) {
 		}
 
 		expected := &RawParams{
-			Variables: map[string]any{
-				"req": []any{
-					map[string]any{
+			Variables: map[string]interface{}{
+				"req": []interface{}{
+					map[string]interface{}{
 						"file": upload,
 					},
 				},
@@ -85,7 +85,8 @@ func TestAddUploadToOperations(t *testing.T) {
 
 		path := "variables.req.0.file"
 		err := request.AddUpload(upload, key, path)
-		require.Equal(t, (*gqlerror.Error)(nil), err)
-		require.Equal(t, expected, request)
+		require.Nil(t, err)
+
+		require.Equal(t, request, expected)
 	})
 }

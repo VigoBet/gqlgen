@@ -17,12 +17,12 @@ type fileFormDataMap struct {
 	file   *os.File
 }
 
-func findFiles(parentMapKey string, variables map[string]any) []*fileFormDataMap {
+func findFiles(parentMapKey string, variables map[string]interface{}) []*fileFormDataMap {
 	files := []*fileFormDataMap{}
 	for key, value := range variables {
-		if v, ok := value.(map[string]any); ok {
+		if v, ok := value.(map[string]interface{}); ok {
 			files = append(files, findFiles(parentMapKey+"."+key, v)...)
-		} else if v, ok := value.([]map[string]any); ok {
+		} else if v, ok := value.([]map[string]interface{}); ok {
 			for i, arr := range v {
 				files = append(files, findFiles(fmt.Sprintf(`%s.%s.%d`, parentMapKey, key, i), arr)...)
 			}
@@ -55,7 +55,7 @@ func WithFiles() Option {
 		//
 		// {"query":"mutation ($input: Input!) {}","variables":{"input":{"file":{}}}
 		requestBody, _ := json.Marshal(bd)
-		_ = bodyWriter.WriteField("operations", string(requestBody))
+		bodyWriter.WriteField("operations", string(requestBody))
 
 		// --b7955bd2e1d17b67ac157b9e9ddb6238888caefc6f3541920a1debad284d
 		// Content-Disposition: form-data; name="map"
@@ -97,7 +97,7 @@ func WithFiles() Option {
 
 			mapData = `{` + strings.Join(mapDataFiles, ",") + `}`
 		}
-		_ = bodyWriter.WriteField("map", mapData)
+		bodyWriter.WriteField("map", mapData)
 
 		// --b7955bd2e1d17b67ac157b9e9ddb6238888caefc6f3541920a1debad284d
 		// Content-Disposition: form-data; name="0"; filename="tempFile"

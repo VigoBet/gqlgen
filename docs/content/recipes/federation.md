@@ -124,16 +124,14 @@ npm install --save @apollo/gateway apollo-server graphql
 
 ```typescript
 const { ApolloServer } = require('apollo-server');
-const { ApolloGateway, IntrospectAndCompose } = require("@apollo/gateway");
+const { ApolloGateway } = require("@apollo/gateway");
 
 const gateway = new ApolloGateway({
-    supergraphSdl: new IntrospectAndCompose({
-        subgraphs: [
-            { name: 'accounts', url: 'http://localhost:4001/query' },
-            { name: 'products', url: 'http://localhost:4002/query' },
-            { name: 'reviews', url: 'http://localhost:4003/query' }
-        ]
-    })
+    serviceList: [
+        { name: 'accounts', url: 'http://localhost:4001/query' },
+        { name: 'products', url: 'http://localhost:4002/query' },
+        { name: 'reviews', url: 'http://localhost:4003/query' }
+    ],
 });
 
 const server = new ApolloServer({

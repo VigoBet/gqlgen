@@ -217,11 +217,6 @@ func (r *queryResolver) DirectiveNullableArg(ctx context.Context, arg *int, arg2
 	panic("not implemented")
 }
 
-// DirectiveSingleNullableArg is the resolver for the directiveSingleNullableArg field.
-func (r *queryResolver) DirectiveSingleNullableArg(ctx context.Context, arg1 *string) (*string, error) {
-	panic("not implemented")
-}
-
 // DirectiveInputNullable is the resolver for the directiveInputNullable field.
 func (r *queryResolver) DirectiveInputNullable(ctx context.Context, arg *InputDirectives) (*string, error) {
 	panic("not implemented")
@@ -264,11 +259,6 @@ func (r *queryResolver) DirectiveDouble(ctx context.Context) (*string, error) {
 
 // DirectiveUnimplemented is the resolver for the directiveUnimplemented field.
 func (r *queryResolver) DirectiveUnimplemented(ctx context.Context) (*string, error) {
-	panic("not implemented")
-}
-
-// DirectiveConcurrent is the resolver for the directiveConcurrent field.
-func (r *queryResolver) DirectiveConcurrent(ctx context.Context) ([]*ObjectDirectivesConcurrent, error) {
 	panic("not implemented")
 }
 

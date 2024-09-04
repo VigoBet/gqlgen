@@ -1,7 +1,6 @@
 package codegen
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -35,7 +34,7 @@ type Data struct {
 	MutationRoot     *Object
 	SubscriptionRoot *Object
 	AugmentedSources []AugmentedSource
-	Plugins          []any
+	Plugins          []interface{}
 }
 
 func (d *Data) HasEmbeddableSources() bool {
@@ -78,7 +77,7 @@ func (d *Data) Directives() DirectiveList {
 	return res
 }
 
-func BuildData(cfg *config.Config, plugins ...any) (*Data, error) {
+func BuildData(cfg *config.Config, plugins ...interface{}) (*Data, error) {
 	// We reload all packages to allow packages to be compared correctly.
 	cfg.ReloadAllPackages()
 
@@ -138,7 +137,7 @@ func BuildData(cfg *config.Config, plugins ...any) (*Data, error) {
 	if s.Schema.Query != nil {
 		s.QueryRoot = s.Objects.ByName(s.Schema.Query.Name)
 	} else {
-		return nil, errors.New("query entry point missing")
+		return nil, fmt.Errorf("query entry point missing")
 	}
 
 	if s.Schema.Mutation != nil {
@@ -171,7 +170,7 @@ func BuildData(cfg *config.Config, plugins ...any) (*Data, error) {
 		}
 
 		// otherwise show a generic error message
-		return nil, errors.New("invalid types were encountered while traversing the go source code, this probably means the invalid code generated isnt correct. add try adding -v to debug")
+		return nil, fmt.Errorf("invalid types were encountered while traversing the go source code, this probably means the invalid code generated isnt correct. add try adding -v to debug")
 	}
 	aSources := []AugmentedSource{}
 	for _, s := range cfg.Sources {
@@ -205,7 +204,7 @@ func BuildData(cfg *config.Config, plugins ...any) (*Data, error) {
 func (b *builder) injectIntrospectionRoots(s *Data) error {
 	obj := s.Objects.ByName(b.Schema.Query.Name)
 	if obj == nil {
-		return errors.New("root query type must be defined")
+		return fmt.Errorf("root query type must be defined")
 	}
 
 	__type, err := b.buildField(obj, &ast.FieldDefinition{

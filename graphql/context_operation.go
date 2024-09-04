@@ -14,7 +14,7 @@ type RequestContext = OperationContext
 
 type OperationContext struct {
 	RawQuery      string
-	Variables     map[string]any
+	Variables     map[string]interface{}
 	OperationName string
 	Doc           *ast.QueryDocument
 	Headers       http.Header
@@ -36,7 +36,7 @@ func (c *OperationContext) Validate(ctx context.Context) error {
 		return errors.New("field 'RawQuery' is required")
 	}
 	if c.Variables == nil {
-		c.Variables = make(map[string]any)
+		c.Variables = make(map[string]interface{})
 	}
 	if c.ResolverMiddleware == nil {
 		return errors.New("field 'ResolverMiddleware' is required")
@@ -103,7 +103,7 @@ Next:
 
 // Errorf sends an error string to the client, passing it through the formatter.
 // Deprecated: use graphql.AddErrorf(ctx, err) instead
-func (c *OperationContext) Errorf(ctx context.Context, format string, args ...any) {
+func (c *OperationContext) Errorf(ctx context.Context, format string, args ...interface{}) {
 	AddErrorf(ctx, format, args...)
 }
 
@@ -120,6 +120,6 @@ func (c *OperationContext) Error(ctx context.Context, err error) {
 	AddError(ctx, err)
 }
 
-func (c *OperationContext) Recover(ctx context.Context, err any) error {
+func (c *OperationContext) Recover(ctx context.Context, err interface{}) error {
 	return ErrorOnPath(ctx, c.RecoverFunc(ctx, err))
 }

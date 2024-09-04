@@ -1,6 +1,6 @@
 package main
 
-//go:generate sh -c "cd _examples && go generate ./..."
+//go:generate sh generate_examples.sh
 
 import (
 	"bytes"
@@ -100,17 +100,17 @@ var initCmd = &cli.Command{
 		cwd, err := os.Getwd()
 		if err != nil {
 			log.Println(err)
-			return fmt.Errorf("unable to determine current directory: %w", err)
+			return fmt.Errorf("unable to determine current directory:%w", err)
 		}
 		pkgName := code.ImportPathForDir(cwd)
 		if pkgName == "" {
-			return errors.New(
+			return fmt.Errorf(
 				"unable to determine import path for current directory, you probably need to run 'go mod init' first",
 			)
 		}
 		modRoot := findModuleRoot(cwd)
 		if modRoot == "" {
-			return errors.New("go.mod is missing. Please, do 'go mod init' first\n")
+			return fmt.Errorf("go.mod is missing. Please, do 'go mod init' first\n")
 		}
 
 		// check schema and config don't already exist
@@ -121,7 +121,7 @@ var initCmd = &cli.Command{
 		}
 		_, err = config.LoadConfigFromDefaultLocations()
 		if err == nil {
-			return errors.New("gqlgen.yml already exists in a parent directory\n")
+			return fmt.Errorf("gqlgen.yml already exists in a parent directory\n")
 		}
 
 		// create config
@@ -187,7 +187,10 @@ var generateCmd = &cli.Command{
 			}
 		}
 
-		return api.Generate(cfg)
+		if err = api.Generate(cfg); err != nil {
+			return err
+		}
+		return nil
 	},
 }
 

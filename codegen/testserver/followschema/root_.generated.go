@@ -54,7 +54,6 @@ type ResolverRoot interface {
 }
 
 type DirectiveRoot struct {
-	Concurrent    func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
 	Custom        func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
 	Defer         func(ctx context.Context, obj interface{}, next graphql.Resolver, ifArg *bool, label *string) (res interface{}, err error)
 	Directive1    func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
@@ -64,10 +63,8 @@ type DirectiveRoot struct {
 	Logged        func(ctx context.Context, obj interface{}, next graphql.Resolver, id string) (res interface{}, err error)
 	MakeNil       func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
 	MakeTypedNil  func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
-	Noop          func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
 	Order1        func(ctx context.Context, obj interface{}, next graphql.Resolver, location string) (res interface{}, err error)
 	Order2        func(ctx context.Context, obj interface{}, next graphql.Resolver, location string) (res interface{}, err error)
-	Populate      func(ctx context.Context, obj interface{}, next graphql.Resolver, value string) (res interface{}, err error)
 	Range         func(ctx context.Context, obj interface{}, next graphql.Resolver, min *int, max *int) (res interface{}, err error)
 	ToNull        func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
 	Unimplemented func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
@@ -265,10 +262,6 @@ type ComplexityRoot struct {
 		Text         func(childComplexity int) int
 	}
 
-	ObjectDirectivesConcurrent struct {
-		Key func(childComplexity int) int
-	}
-
 	ObjectDirectivesWithCustomGoModel struct {
 		NullableText func(childComplexity int) int
 	}
@@ -335,7 +328,6 @@ type ComplexityRoot struct {
 		DeferCase2                       func(childComplexity int) int
 		DeprecatedField                  func(childComplexity int) int
 		DirectiveArg                     func(childComplexity int, arg string) int
-		DirectiveConcurrent              func(childComplexity int) int
 		DirectiveDouble                  func(childComplexity int) int
 		DirectiveField                   func(childComplexity int) int
 		DirectiveFieldDef                func(childComplexity int, ret string) int
@@ -345,7 +337,6 @@ type ComplexityRoot struct {
 		DirectiveNullableArg             func(childComplexity int, arg *int, arg2 *int, arg3 *string) int
 		DirectiveObject                  func(childComplexity int) int
 		DirectiveObjectWithCustomGoModel func(childComplexity int) int
-		DirectiveSingleNullableArg       func(childComplexity int, arg1 *string) int
 		DirectiveUnimplemented           func(childComplexity int) int
 		Dog                              func(childComplexity int) int
 		EmbeddedCase1                    func(childComplexity int) int
@@ -1066,13 +1057,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.ObjectDirectives.Text(childComplexity), true
 
-	case "ObjectDirectivesConcurrent.key":
-		if e.complexity.ObjectDirectivesConcurrent.Key == nil {
-			break
-		}
-
-		return e.complexity.ObjectDirectivesConcurrent.Key(childComplexity), true
-
 	case "ObjectDirectivesWithCustomGoModel.nullableText":
 		if e.complexity.ObjectDirectivesWithCustomGoModel.NullableText == nil {
 			break
@@ -1327,13 +1311,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.DirectiveArg(childComplexity, args["arg"].(string)), true
 
-	case "Query.directiveConcurrent":
-		if e.complexity.Query.DirectiveConcurrent == nil {
-			break
-		}
-
-		return e.complexity.Query.DirectiveConcurrent(childComplexity), true
-
 	case "Query.directiveDouble":
 		if e.complexity.Query.DirectiveDouble == nil {
 			break
@@ -1421,18 +1398,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.DirectiveObjectWithCustomGoModel(childComplexity), true
-
-	case "Query.directiveSingleNullableArg":
-		if e.complexity.Query.DirectiveSingleNullableArg == nil {
-			break
-		}
-
-		args, err := ec.field_Query_directiveSingleNullableArg_args(context.TODO(), rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Query.DirectiveSingleNullableArg(childComplexity, args["arg1"].(*string)), true
 
 	case "Query.directiveUnimplemented":
 		if e.complexity.Query.DirectiveUnimplemented == nil {

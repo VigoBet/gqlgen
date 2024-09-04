@@ -81,15 +81,8 @@ resolver:
 # Optional: wrap nullable input fields with Omittable
 # nullable_input_omittable: true
 
-# Optional: wrap nullable input fields with Omittable
-# nullable_input_omittable: true
-
-# Optional: if this is set to true, argument directives that
-# decorate a field with a null value will still be called.
-#
-# This enables argumment directives to not just mutate
-# argument values but to set them even if they're null.
-# call_argument_directives_with_null: false
+# Optional: turn on to return pointers instead of values in unmarshalInput
+# return_pointers_in_unmarshalinput: false
 
 # Optional: set to speed up generation time by not performing a final validation pass.
 # skip_validation: true

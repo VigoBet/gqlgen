@@ -103,7 +103,7 @@ func (t Websocket) Do(w http.ResponseWriter, r *http.Request, exec graphql.Graph
 	switch ws.Subprotocol() {
 	default:
 		msg := websocket.FormatCloseMessage(websocket.CloseProtocolError, fmt.Sprintf("unsupported negotiated subprotocol %s", ws.Subprotocol()))
-		_ = ws.WriteMessage(websocket.CloseMessage, msg)
+		ws.WriteMessage(websocket.CloseMessage, msg)
 		return
 	case graphqlwsSubprotocol, "":
 		// clients are required to send a subprotocol, to be backward compatible with the previous implementation we select
@@ -193,12 +193,12 @@ func (c *wsConnection) init() bool {
 			}
 		}
 
-		var initAckPayload *InitPayload
+		var initAckPayload *InitPayload = nil
 		if c.InitFunc != nil {
 			var ctx context.Context
 			ctx, initAckPayload, err = c.InitFunc(c.ctx, c.initPayload)
 			if err != nil {
-				c.sendConnectionError("%s", err.Error())
+				c.sendConnectionError(err.Error())
 				c.close(websocket.CloseNormalClosure, "terminated")
 				return false
 			}
@@ -239,6 +239,7 @@ func (c *wsConnection) run() {
 	ctx, cancel := context.WithCancel(c.ctx)
 	defer func() {
 		cancel()
+		c.close(websocket.CloseAbnormalClosure, "unexpected closure")
 	}()
 
 	// If we're running in graphql-ws mode, create a timer that will trigger a
@@ -271,7 +272,7 @@ func (c *wsConnection) run() {
 		if !c.MissingPongOk {
 			// Note: when the connection is closed by this deadline, the client
 			// will receive an "invalid close code"
-			_ = c.conn.SetReadDeadline(time.Now().UTC().Add(2 * c.PingPongInterval))
+			c.conn.SetReadDeadline(time.Now().UTC().Add(2 * c.PingPongInterval))
 		}
 		go c.ping(ctx)
 	}
@@ -311,7 +312,7 @@ func (c *wsConnection) run() {
 			c.receivedPong = true
 			c.mu.Unlock()
 			// Clear ReadTimeout -- 0 time val clears.
-			_ = c.conn.SetReadDeadline(time.Time{})
+			c.conn.SetReadDeadline(time.Time{})
 		default:
 			c.sendConnectionError("unexpected message %s", m.t)
 			c.close(websocket.CloseProtocolError, "unexpected message")
@@ -356,7 +357,7 @@ func (c *wsConnection) ping(ctx context.Context) {
 			// if we have not yet received a pong, don't reset the deadline.
 			c.mu.Lock()
 			if !c.MissingPongOk && c.receivedPong {
-				_ = c.conn.SetReadDeadline(time.Now().UTC().Add(2 * c.PingPongInterval))
+				c.conn.SetReadDeadline(time.Now().UTC().Add(2 * c.PingPongInterval))
 			}
 			c.receivedPong = false
 			c.mu.Unlock()
@@ -368,7 +369,7 @@ func (c *wsConnection) closeOnCancel(ctx context.Context) {
 	<-ctx.Done()
 
 	if r := closeReasonForContext(ctx); r != "" {
-		c.sendConnectionError("%s", r)
+		c.sendConnectionError(r)
 	}
 	c.close(websocket.CloseNormalClosure, "terminated")
 }
@@ -479,7 +480,7 @@ func (c *wsConnection) sendError(id string, errors ...*gqlerror.Error) {
 	c.write(&message{t: errorMessageType, id: id, payload: b})
 }
 
-func (c *wsConnection) sendConnectionError(format string, args ...any) {
+func (c *wsConnection) sendConnectionError(format string, args ...interface{}) {
 	b, err := json.Marshal(&gqlerror.Error{Message: fmt.Sprintf(format, args...)})
 	if err != nil {
 		panic(err)

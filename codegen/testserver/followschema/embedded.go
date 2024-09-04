@@ -7,7 +7,7 @@ type EmbeddedCase1 struct {
 }
 
 // Empty interface
-type Empty any
+type Empty interface{}
 
 // ExportedEmbeddedPointerAfterInterface model
 type ExportedEmbeddedPointerAfterInterface struct{}

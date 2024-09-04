@@ -29,5 +29,6 @@ func BenchmarkSimpleQueryNoArgs(b *testing.B) {
 		if rec.Body.String() != `{"data":{"search":[{"starships":[{"name":"X-Wing"},{"name":"Imperial shuttle"}]}]}}` {
 			b.Fatalf("Unexpected response: %s", rec.Body.String())
 		}
+
 	}
 }

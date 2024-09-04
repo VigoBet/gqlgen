@@ -2,7 +2,7 @@ package handler_test
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -81,11 +81,11 @@ func TestServer(t *testing.T) {
 
 	t.Run("invokes field middleware in order", func(t *testing.T) {
 		var calls []string
-		srv.AroundFields(func(ctx context.Context, next graphql.Resolver) (res any, err error) {
+		srv.AroundFields(func(ctx context.Context, next graphql.Resolver) (res interface{}, err error) {
 			calls = append(calls, "first")
 			return next(ctx)
 		})
-		srv.AroundFields(func(ctx context.Context, next graphql.Resolver) (res any, err error) {
+		srv.AroundFields(func(ctx context.Context, next graphql.Resolver) (res interface{}, err error) {
 			calls = append(calls, "second")
 			return next(ctx)
 		})
@@ -107,13 +107,13 @@ func TestServer(t *testing.T) {
 
 		resp := get(srv, "/foo?query=invalid")
 		assert.Equal(t, http.StatusUnprocessableEntity, resp.Code, resp.Body.String())
-		assert.Len(t, errors1, 1)
-		assert.Len(t, errors2, 1)
+		assert.Equal(t, 1, len(errors1))
+		assert.Equal(t, 1, len(errors2))
 	})
 
 	t.Run("query caching", func(t *testing.T) {
 		ctx := context.Background()
-		cache := &graphql.MapCache[*ast.QueryDocument]{}
+		cache := &graphql.MapCache{}
 		srv.SetQueryCache(cache)
 		qry := `query Foo {name}`
 
@@ -124,12 +124,12 @@ func TestServer(t *testing.T) {
 
 			cacheDoc, ok := cache.Get(ctx, qry)
 			require.True(t, ok)
-			require.Equal(t, "Foo", cacheDoc.Operations[0].Name)
+			require.Equal(t, "Foo", cacheDoc.(*ast.QueryDocument).Operations[0].Name)
 		})
 
 		t.Run("cache hits use document from cache", func(t *testing.T) {
 			doc, err := parser.ParseQuery(&ast.Source{Input: `query Bar {name}`})
-			require.NoError(t, err)
+			require.Nil(t, err)
 			cache.Add(ctx, qry, doc)
 
 			resp := get(srv, "/foo?query="+url.QueryEscape(qry))
@@ -138,7 +138,7 @@ func TestServer(t *testing.T) {
 
 			cacheDoc, ok := cache.Get(ctx, qry)
 			require.True(t, ok)
-			require.Equal(t, "Bar", cacheDoc.Operations[0].Name)
+			require.Equal(t, "Bar", cacheDoc.(*ast.QueryDocument).Operations[0].Name)
 		})
 	})
 }
@@ -159,8 +159,8 @@ func TestErrorServer(t *testing.T) {
 
 		resp := get(srv, "/foo?query={name}")
 		assert.Equal(t, http.StatusOK, resp.Code, resp.Body.String())
-		assert.Len(t, errors1, 1)
-		assert.Len(t, errors2, 1)
+		assert.Equal(t, 1, len(errors1))
+		assert.Equal(t, 1, len(errors2))
 	})
 }
 
@@ -171,7 +171,7 @@ func (t panicTransport) Supports(r *http.Request) bool {
 }
 
 func (t panicTransport) Do(w http.ResponseWriter, r *http.Request, exec graphql.GraphExecutor) {
-	panic(errors.New("panic in transport"))
+	panic(fmt.Errorf("panic in transport"))
 }
 
 func TestRecover(t *testing.T) {
@@ -186,7 +186,7 @@ func TestRecover(t *testing.T) {
 }
 
 func get(handler http.Handler, target string) *httptest.ResponseRecorder {
-	r := httptest.NewRequest("GET", target, http.NoBody)
+	r := httptest.NewRequest("GET", target, nil)
 	w := httptest.NewRecorder()
 
 	handler.ServeHTTP(w, r)
@@ -194,7 +194,7 @@ func get(handler http.Handler, target string) *httptest.ResponseRecorder {
 }
 
 func post(handler http.Handler, target, contentType string) *httptest.ResponseRecorder {
-	r := httptest.NewRequest("POST", target, http.NoBody)
+	r := httptest.NewRequest("POST", target, nil)
 	r.Header.Set("Content-Type", contentType)
 	w := httptest.NewRecorder()
 

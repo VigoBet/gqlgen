@@ -10,15 +10,15 @@ directive @goField(
 ) on INPUT_FIELD_DEFINITION | FIELD_DEFINITION | INTERFACE
 
 type Query {
-    thisShouldntGetGenerated: Boolean
+    thisShoudlntGetGenerated: Boolean
 }
 
 type Mutation {
-    thisShouldntGetGenerated: Boolean
+    thisShoudlntGetGenerated: Boolean
 }
 
 type Subscription {
-    thisShouldntGetGenerated: Boolean
+    thisShoudlntGetGenerated: Boolean
 }
 
 type MissingTypeNotNull implements MissingInterface & ExistingInterface {

@@ -1,7 +1,6 @@
 package code
 
 import (
-	"errors"
 	"fmt"
 	"go/types"
 )
@@ -33,7 +32,7 @@ func CompatibleTypes(expected, actual types.Type) error {
 	case *types.Array:
 		if actual, ok := actual.(*types.Array); ok {
 			if expected.Len() != actual.Len() {
-				return errors.New("array length differs")
+				return fmt.Errorf("array length differs")
 			}
 
 			return CompatibleTypes(expected.Elem(), actual.Elem())
@@ -51,7 +50,7 @@ func CompatibleTypes(expected, actual types.Type) error {
 	case *types.Struct:
 		if actual, ok := actual.(*types.Struct); ok {
 			if expected.NumFields() != actual.NumFields() {
-				return errors.New("number of struct fields differ")
+				return fmt.Errorf("number of struct fields differ")
 			}
 
 			for i := 0; i < expected.NumFields(); i++ {

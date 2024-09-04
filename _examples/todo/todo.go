@@ -5,6 +5,7 @@ package todo
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/mitchellh/mapstructure"
@@ -38,7 +39,7 @@ func New() Config {
 			lastID: 4,
 		},
 	}
-	c.Directives.HasRole = func(ctx context.Context, obj any, next graphql.Resolver, role Role) (any, error) {
+	c.Directives.HasRole = func(ctx context.Context, obj interface{}, next graphql.Resolver, role Role) (interface{}, error) {
 		switch role {
 		case RoleAdmin:
 			// No admin for you!
@@ -46,17 +47,17 @@ func New() Config {
 		case RoleOwner:
 			ownable, isOwnable := obj.(Ownable)
 			if !isOwnable {
-				return nil, errors.New("obj cant be owned")
+				return nil, fmt.Errorf("obj cant be owned")
 			}
 
 			if ownable.Owner().ID != getUserId(ctx) {
-				return nil, errors.New("you don't own that")
+				return nil, fmt.Errorf("you don't own that")
 			}
 		}
 
 		return next(ctx)
 	}
-	c.Directives.User = func(ctx context.Context, obj any, next graphql.Resolver, id int) (any, error) {
+	c.Directives.User = func(ctx context.Context, obj interface{}, next graphql.Resolver, id int) (interface{}, error) {
 		return next(context.WithValue(ctx, ckey("userId"), id))
 	}
 	return c
@@ -123,7 +124,7 @@ func (r *MutationResolver) CreateTodo(ctx context.Context, todo TodoInput) (*Tod
 	return newTodo, nil
 }
 
-func (r *MutationResolver) UpdateTodo(ctx context.Context, id int, changes map[string]any) (*Todo, error) {
+func (r *MutationResolver) UpdateTodo(ctx context.Context, id int, changes map[string]interface{}) (*Todo, error) {
 	var affectedTodo *Todo
 
 	for i := 0; i < len(r.todos); i++ {

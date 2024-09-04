@@ -16,9 +16,9 @@ func TestTime(t *testing.T) {
 		MarshalTime(initialTime).MarshalGQL(buf)
 
 		str, err := strconv.Unquote(buf.String())
-		require.NoError(t, err)
+		require.Nil(t, err)
 		newTime, err := UnmarshalTime(str)
-		require.NoError(t, err)
+		require.Nil(t, err)
 
 		require.True(t, initialTime.Equal(newTime), "expected times %v and %v to equal", initialTime, newTime)
 	})

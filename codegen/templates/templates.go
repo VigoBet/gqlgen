@@ -2,7 +2,6 @@ package templates
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"go/types"
 	"io/fs"
@@ -53,7 +52,7 @@ type Options struct {
 	// FileNotice is notice written below the package line
 	FileNotice string
 	// Data will be passed to the template execution.
-	Data  any
+	Data  interface{}
 	Funcs template.FuncMap
 
 	// Packages cache, you can find me on config.Config
@@ -72,7 +71,7 @@ var (
 // files inside the directory where you wrote the plugin.
 func Render(cfg Options) error {
 	if CurrentImports != nil {
-		panic(errors.New("recursive or concurrent call to RenderToFile detected"))
+		panic(fmt.Errorf("recursive or concurrent call to RenderToFile detected"))
 	}
 	CurrentImports = &Imports{packages: cfg.Packages, destDir: filepath.Dir(cfg.Filename)}
 
@@ -88,15 +87,15 @@ func Render(cfg Options) error {
 	}
 
 	roots := make([]string, 0, len(t.Templates()))
-	for _, templ := range t.Templates() {
+	for _, template := range t.Templates() {
 		// templates that end with _.gotpl are special files we don't want to include
-		if strings.HasSuffix(templ.Name(), "_.gotpl") ||
+		if strings.HasSuffix(template.Name(), "_.gotpl") ||
 			// filter out templates added with {{ template xxx }} syntax inside the template file
-			!strings.HasSuffix(templ.Name(), ".gotpl") {
+			!strings.HasSuffix(template.Name(), ".gotpl") {
 			continue
 		}
 
-		roots = append(roots, templ.Name())
+		roots = append(roots, template.Name())
 	}
 
 	// then execute all the important looking ones in order, adding them to the same file
@@ -185,7 +184,7 @@ func parseTemplates(cfg Options, t *template.Template) (*template.Template, erro
 	return t, nil
 }
 
-func center(width int, pad, s string) string {
+func center(width int, pad string, s string) string {
 	if len(s)+2 > width {
 		return s
 	}
@@ -202,12 +201,10 @@ func Funcs() template.FuncMap {
 		"rawQuote":           rawQuote,
 		"dump":               Dump,
 		"ref":                ref,
-		"obj":                obj,
 		"ts":                 TypeIdentifier,
 		"call":               Call,
 		"prefixLines":        prefixLines,
 		"notNil":             notNil,
-		"strSplit":           StrSplit,
 		"reserveImport":      CurrentImports.Reserve,
 		"lookupImport":       CurrentImports.Lookup,
 		"go":                 ToGo,
@@ -217,10 +214,9 @@ func Funcs() template.FuncMap {
 		"add": func(a, b int) int {
 			return a + b
 		},
-		"render": func(filename string, tpldata any) (*bytes.Buffer, error) {
+		"render": func(filename string, tpldata interface{}) (*bytes.Buffer, error) {
 			return render(resolveName(filename, 0), tpldata)
 		},
-		"typeName": typeName,
 	}
 }
 
@@ -249,15 +245,6 @@ func isDelimiter(c rune) bool {
 
 func ref(p types.Type) string {
 	return CurrentImports.LookupType(p)
-}
-
-func obj(obj types.Object) string {
-	pkg := CurrentImports.Lookup(obj.Pkg().Path())
-	if pkg != "" {
-		pkg += "."
-	}
-
-	return pkg + obj.Name()
 }
 
 func Call(p *types.Func) string {
@@ -570,7 +557,7 @@ func rawQuote(s string) string {
 	return "`" + strings.ReplaceAll(s, "`", "`+\"`\"+`") + "`"
 }
 
-func notNil(field string, data any) bool {
+func notNil(field string, data interface{}) bool {
 	v := reflect.ValueOf(data)
 
 	if v.Kind() == reflect.Ptr {
@@ -584,16 +571,12 @@ func notNil(field string, data any) bool {
 	return val.IsValid() && !val.IsNil()
 }
 
-func StrSplit(s, sep string) []string {
-	return strings.Split(s, sep)
-}
-
-func Dump(val any) string {
+func Dump(val interface{}) string {
 	switch val := val.(type) {
 	case int:
 		return strconv.Itoa(val)
 	case int64:
-		return strconv.FormatInt(val, 10)
+		return fmt.Sprintf("%d", val)
 	case float64:
 		return fmt.Sprintf("%f", val)
 	case string:
@@ -602,13 +585,13 @@ func Dump(val any) string {
 		return strconv.FormatBool(val)
 	case nil:
 		return "nil"
-	case []any:
+	case []interface{}:
 		var parts []string
 		for _, part := range val {
 			parts = append(parts, Dump(part))
 		}
 		return "[]interface{}{" + strings.Join(parts, ",") + "}"
-	case map[string]any:
+	case map[string]interface{}:
 		buf := bytes.Buffer{}
 		buf.WriteString("map[string]interface{}{")
 		var keys []string
@@ -648,17 +631,7 @@ func resolveName(name string, skip int) string {
 	return filepath.Join(filepath.Dir(callerFile), name)
 }
 
-func typeName(t types.Type) string {
-	name := types.TypeString(t, func(*types.Package) string {
-		return ""
-	})
-	if name != "" && strings.HasPrefix(name, "*") {
-		return name[1:]
-	}
-	return name
-}
-
-func render(filename string, tpldata any) (*bytes.Buffer, error) {
+func render(filename string, tpldata interface{}) (*bytes.Buffer, error) {
 	t := template.New("").Funcs(Funcs())
 
 	b, err := os.ReadFile(filename)
@@ -683,7 +656,7 @@ func write(filename string, b []byte, packages *code.Packages) error {
 
 	formatted, err := imports.Prune(filename, b, packages)
 	if err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "gofmt failed on %s: %s\n", filepath.Base(filename), err.Error())
+		fmt.Fprintf(os.Stderr, "gofmt failed on %s: %s\n", filepath.Base(filename), err.Error())
 		formatted = b
 	}
 
@@ -701,6 +674,37 @@ var pkgReplacer = strings.NewReplacer(
 	"-", "ᚑ",
 	"~", "א",
 )
+
+func TypeIdentifier(t types.Type) string {
+	res := ""
+	for {
+		switch it := t.(type) {
+		case *types.Pointer:
+			t.Underlying()
+			res += "ᚖ"
+			t = it.Elem()
+		case *types.Slice:
+			res += "ᚕ"
+			t = it.Elem()
+		case *types.Named:
+			res += pkgReplacer.Replace(it.Obj().Pkg().Path())
+			res += "ᚐ"
+			res += it.Obj().Name()
+			return res
+		case *types.Basic:
+			res += it.Name()
+			return res
+		case *types.Map:
+			res += "map"
+			return res
+		case *types.Interface:
+			res += "interface"
+			return res
+		default:
+			panic(fmt.Errorf("unexpected type %T", it))
+		}
+	}
+}
 
 // CommonInitialisms is a set of common initialisms.
 // Only add entries that are highly unlikely to be non-initialisms.

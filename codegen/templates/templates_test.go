@@ -3,7 +3,6 @@ package templates
 import (
 	"embed"
 	"fmt"
-	"go/types"
 	"os"
 	"path/filepath"
 	"testing"
@@ -309,7 +308,7 @@ func Test_wordWalker(t *testing.T) {
 
 	for i, at := range theTests {
 		t.Run(fmt.Sprintf("wordWalker-%d", i), func(t *testing.T) {
-			require.Equal(t, at.expected, at.input)
+			require.Equal(t, at.input, at.expected)
 		})
 	}
 }
@@ -321,11 +320,12 @@ func TestCenter(t *testing.T) {
 }
 
 func TestTemplateOverride(t *testing.T) {
-	f, err := os.CreateTemp(t.TempDir(), "gqlgen")
+	f, err := os.CreateTemp("", "gqlgen")
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer f.Close()
+	defer os.RemoveAll(f.Name())
 	err = Render(Options{Template: "hello", Filename: f.Name(), Packages: code.NewPackages()})
 	if err != nil {
 		t.Fatal(err)
@@ -333,6 +333,7 @@ func TestTemplateOverride(t *testing.T) {
 }
 
 func TestRenderFS(t *testing.T) {
+
 	tempDir := t.TempDir()
 
 	outDir := filepath.Join(tempDir, "output")
@@ -344,6 +345,7 @@ func TestRenderFS(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer f.Close()
+	defer os.RemoveAll(f.Name())
 	err = Render(Options{TemplateFS: templateFS, Filename: f.Name(), Packages: code.NewPackages()})
 	if err != nil {
 		t.Fatal(err)
@@ -355,29 +357,4 @@ func TestRenderFS(t *testing.T) {
 
 	// don't look at last character since it's \n on Linux and \r\n on Windows
 	assert.Equal(t, expectedString, actualContentsStr[:len(expectedString)])
-}
-
-func TestTypeName(t *testing.T) {
-	testType := types.NewNamed(
-		types.NewTypeName(0, types.NewPackage(
-			"github.com/99designs/gqlgen/codegen/templates",
-			"templates",
-		), "testType", nil),
-		types.NewStruct(nil, nil),
-		nil,
-	)
-
-	tests := []struct {
-		input    types.Type
-		expected string
-	}{
-		{testType, "testType"},
-		{types.NewPointer(testType), "testType"},
-		{types.NewPointer(types.NewPointer(testType)), "*testType"},
-	}
-
-	for _, test := range tests {
-		result := typeName(test.input)
-		assert.Equal(t, test.expected, result)
-	}
 }

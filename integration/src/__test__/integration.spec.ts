@@ -10,7 +10,7 @@ import {
     Observable,
     Operation,
 } from '@apollo/client/core';
-import { HttpLink } from '@apollo/client/link/http';
+import {HttpLink} from '@apollo/client/link/http';
 
 import { print } from "graphql";
 import { GraphQLWsLink } from "@apollo/client/link/subscriptions";
@@ -35,6 +35,7 @@ import {
 import {
     cacheExchange,
     Client,
+    dedupExchange,
     subscriptionExchange,
 } from "urql";
 import { isFragmentReady, useFragment } from "../generated";
@@ -369,6 +370,7 @@ describe("URQL SSE client", () => {
     const client = new Client({
         url: uri,
         exchanges: [
+            dedupExchange,
             cacheExchange,
             subscriptionExchange({
                 enableAllOperations: true,

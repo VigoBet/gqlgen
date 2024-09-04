@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -30,42 +31,34 @@ func TestReadConfig(t *testing.T) {
 	})
 
 	t.Run("malformed config", func(t *testing.T) {
-		cfgFile, err := os.Open("testdata/cfg/malformedconfig.yml")
-		require.NoError(t, err)
-		t.Cleanup(func() { _ = cfgFile.Close() })
-		_, err = ReadConfig(cfgFile)
+		cfgFile, _ := os.Open("testdata/cfg/malformedconfig.yml")
+		_, err := ReadConfig(cfgFile)
 		require.EqualError(t, err, "unable to parse config: yaml: unmarshal errors:\n  line 1: cannot unmarshal !!str `asdf` into config.Config")
 	})
 
 	t.Run("unknown keys", func(t *testing.T) {
-		cfgFile, err := os.Open("testdata/cfg/unknownkeys.yml")
-		require.NoError(t, err)
-		t.Cleanup(func() { _ = cfgFile.Close() })
-		_, err = ReadConfig(cfgFile)
+		cfgFile, _ := os.Open("testdata/cfg/unknownkeys.yml")
+		_, err := ReadConfig(cfgFile)
 		require.EqualError(t, err, "unable to parse config: yaml: unmarshal errors:\n  line 2: field unknown not found in type config.Config")
 	})
 
 	t.Run("globbed filenames", func(t *testing.T) {
-		cfgFile, err := os.Open("testdata/cfg/glob.yml")
-		require.NoError(t, err)
-		t.Cleanup(func() { _ = cfgFile.Close() })
+		cfgFile, _ := os.Open("testdata/cfg/glob.yml")
 		c, err := ReadConfig(cfgFile)
 		require.NoError(t, err)
 
 		if runtime.GOOS == "windows" {
-			require.Equal(t, `testdata\cfg\glob\bar\bar with spaces.graphql`, c.SchemaFilename[0])
-			require.Equal(t, `testdata\cfg\glob\foo\foo.graphql`, c.SchemaFilename[1])
+			require.Equal(t, c.SchemaFilename[0], `testdata\cfg\glob\bar\bar with spaces.graphql`)
+			require.Equal(t, c.SchemaFilename[1], `testdata\cfg\glob\foo\foo.graphql`)
 		} else {
-			require.Equal(t, "testdata/cfg/glob/bar/bar with spaces.graphql", c.SchemaFilename[0])
-			require.Equal(t, "testdata/cfg/glob/foo/foo.graphql", c.SchemaFilename[1])
+			require.Equal(t, c.SchemaFilename[0], "testdata/cfg/glob/bar/bar with spaces.graphql")
+			require.Equal(t, c.SchemaFilename[1], "testdata/cfg/glob/foo/foo.graphql")
 		}
 	})
 
 	t.Run("unwalkable path", func(t *testing.T) {
-		cfgFile, err := os.Open("testdata/cfg/unwalkable.yml")
-		require.NoError(t, err)
-		t.Cleanup(func() { _ = cfgFile.Close() })
-		_, err = ReadConfig(cfgFile)
+		cfgFile, _ := os.Open("testdata/cfg/unwalkable.yml")
+		_, err := ReadConfig(cfgFile)
 		if runtime.GOOS == "windows" {
 			require.EqualError(t, err, "failed to walk schema at root not_walkable/: CreateFile not_walkable/: The system cannot find the file specified.")
 		} else {
@@ -102,7 +95,7 @@ func TestLoadConfigFromDefaultLocation(t *testing.T) {
 		require.NoError(t, err)
 
 		cfg, err = LoadConfigFromDefaultLocations()
-		require.ErrorIs(t, err, fs.ErrNotExist)
+		require.True(t, errors.Is(err, fs.ErrNotExist))
 	})
 }
 
@@ -125,7 +118,7 @@ func TestLoadDefaultConfig(t *testing.T) {
 		require.NoError(t, err)
 
 		cfg, err = LoadDefaultConfig()
-		require.ErrorIs(t, err, fs.ErrNotExist)
+		require.True(t, errors.Is(err, fs.ErrNotExist))
 	})
 }
 

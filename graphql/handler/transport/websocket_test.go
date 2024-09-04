@@ -301,8 +301,8 @@ func TestWebsocketInitFunc(t *testing.T) {
 
 		time.Sleep(time.Millisecond * 10)
 		m := readOp(c)
-		assert.Equal(t, connectionErrorMsg, m.Type)
-		assert.Equal(t, `{"message":"beep boop"}`, string(m.Payload))
+		assert.Equal(t, m.Type, connectionErrorMsg)
+		assert.Equal(t, string(m.Payload), `{"message":"beep boop"}`)
 	})
 	t.Run("accept connection if WebsocketInitFunc is provided and is accepting connection", func(t *testing.T) {
 		h := testserver.New()
@@ -323,7 +323,7 @@ func TestWebsocketInitFunc(t *testing.T) {
 		connAck := readOp(c)
 		assert.Equal(t, connectionAckMsg, connAck.Type)
 
-		var payload map[string]any
+		var payload map[string]interface{}
 		err := json.Unmarshal(connAck.Payload, &payload)
 		if err != nil {
 			t.Fatal("Unexpected Error", err)
@@ -347,7 +347,7 @@ func TestWebSocketInitTimeout(t *testing.T) {
 
 		var msg operationMessage
 		err := c.ReadJSON(&msg)
-		require.Error(t, err)
+		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "timeout")
 	})
 
@@ -360,7 +360,7 @@ func TestWebSocketInitTimeout(t *testing.T) {
 		c := wsConnect(srv.URL)
 		defer c.Close()
 
-		done := make(chan any, 1)
+		done := make(chan interface{}, 1)
 		go func() {
 			var msg operationMessage
 			_ = c.ReadJSON(&msg)
@@ -382,7 +382,8 @@ func TestWebSocketErrorFunc(t *testing.T) {
 		h := testserver.New()
 		h.AddTransport(transport.Websocket{
 			ErrorFunc: func(_ context.Context, err error) {
-				require.EqualError(t, err, "websocket read: invalid message received")
+				require.Error(t, err)
+				assert.Equal(t, err.Error(), "websocket read: invalid message received")
 				assert.IsType(t, transport.WebsocketError{}, err)
 				assert.True(t, err.(transport.WebsocketError).IsReadError)
 				errFuncCalled <- true
@@ -675,7 +676,7 @@ func TestWebsocketWithPingPongInterval(t *testing.T) {
 		h := testserver.New()
 		closeFuncCalled := make(chan bool, 1)
 		h.AddTransport(transport.Websocket{
-			MissingPongOk:    false, // default value but being explicit for test clarity.
+			MissingPongOk:    false, // default value but beign explicit for test clarity.
 			PingPongInterval: 5 * time.Millisecond,
 			CloseFunc: func(_ context.Context, _closeCode int) {
 				closeFuncCalled <- true
@@ -759,6 +760,7 @@ func TestWebsocketWithPingPongInterval(t *testing.T) {
 		assert.Equal(t, connectionKeepAliveMsg, readOp(c).Type)
 	})
 	t.Run("pong only messages are sent when configured with graphql-transport-ws", func(t *testing.T) {
+
 		h, srv := initialize(transport.Websocket{PongOnlyInterval: 10 * time.Millisecond})
 		defer srv.Close()
 
@@ -791,6 +793,7 @@ func TestWebsocketWithPingPongInterval(t *testing.T) {
 		msg = readOp(c)
 		assert.Equal(t, graphqltransportwsPongMsg, msg.Type)
 	})
+
 }
 
 func wsConnect(url string) *websocket.Conn {

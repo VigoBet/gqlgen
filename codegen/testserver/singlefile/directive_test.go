@@ -1,12 +1,8 @@
 package singlefile
 
 import (
-	"cmp"
 	"context"
-	"errors"
 	"fmt"
-	"reflect"
-	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -15,17 +11,6 @@ import (
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/graphql/handler"
 )
-
-// isNil checks if the given value is nil
-func isNil(input any) bool {
-	if input == nil {
-		return true
-	}
-	// Using reflect to check if the value is nil. This is necessary for
-	// for any types that are not nil types but have a nil value (e.g. *string).
-	value := reflect.ValueOf(input)
-	return value.IsNil()
-}
 
 type ckey string
 
@@ -45,14 +30,6 @@ func TestDirectives(t *testing.T) {
 	}
 
 	resolvers.QueryResolver.DirectiveNullableArg = func(ctx context.Context, arg *int, arg2 *int, arg3 *string) (*string, error) {
-		return &ok, nil
-	}
-
-	resolvers.QueryResolver.DirectiveSingleNullableArg = func(ctx context.Context, arg1 *string) (*string, error) {
-		if arg1 != nil {
-			return arg1, nil
-		}
-
 		return &ok, nil
 	}
 
@@ -89,17 +66,6 @@ func TestDirectives(t *testing.T) {
 		return &ok, nil
 	}
 
-	resolvers.QueryResolver.DirectiveConcurrent = func(ctx context.Context) ([]*ObjectDirectivesConcurrent, error) {
-		return []*ObjectDirectivesConcurrent{
-			{
-				Key: 1,
-			},
-			{
-				Key: 2,
-			},
-		}, nil
-	}
-
 	okchan := func() (<-chan *string, error) {
 		res := make(chan *string, 1)
 		res <- &ok
@@ -125,12 +91,12 @@ func TestDirectives(t *testing.T) {
 	srv := handler.NewDefaultServer(NewExecutableSchema(Config{
 		Resolvers: resolvers,
 		Directives: DirectiveRoot{
-			Length: func(ctx context.Context, obj any, next graphql.Resolver, min int, max *int, message *string) (any, error) {
+			Length: func(ctx context.Context, obj interface{}, next graphql.Resolver, min int, max *int, message *string) (interface{}, error) {
 				e := func(msg string) error {
 					if message == nil {
-						return errors.New(msg)
+						return fmt.Errorf(msg)
 					}
-					return errors.New(*message)
+					return fmt.Errorf(*message)
 				}
 				res, err := next(ctx)
 				if err != nil {
@@ -146,7 +112,7 @@ func TestDirectives(t *testing.T) {
 				}
 				return res, nil
 			},
-			Range: func(ctx context.Context, obj any, next graphql.Resolver, min *int, max *int) (any, error) {
+			Range: func(ctx context.Context, obj interface{}, next graphql.Resolver, min *int, max *int) (interface{}, error) {
 				res, err := next(ctx)
 				if err != nil {
 					return nil, err
@@ -155,77 +121,59 @@ func TestDirectives(t *testing.T) {
 				switch res := res.(type) {
 				case int:
 					if min != nil && res < *min {
-						return nil, errors.New("too small")
+						return nil, fmt.Errorf("too small")
 					}
 					if max != nil && res > *max {
-						return nil, errors.New("too large")
+						return nil, fmt.Errorf("too large")
 					}
 					return next(ctx)
 
 				case int64:
 					if min != nil && int(res) < *min {
-						return nil, errors.New("too small")
+						return nil, fmt.Errorf("too small")
 					}
 					if max != nil && int(res) > *max {
-						return nil, errors.New("too large")
+						return nil, fmt.Errorf("too large")
 					}
 					return next(ctx)
 
 				case *int:
 					if min != nil && *res < *min {
-						return nil, errors.New("too small")
+						return nil, fmt.Errorf("too small")
 					}
 					if max != nil && *res > *max {
-						return nil, errors.New("too large")
+						return nil, fmt.Errorf("too large")
 					}
 					return next(ctx)
 				}
 				return nil, fmt.Errorf("unsupported type %T", res)
 			},
-			Custom: func(ctx context.Context, obj any, next graphql.Resolver) (any, error) {
+			Custom: func(ctx context.Context, obj interface{}, next graphql.Resolver) (interface{}, error) {
 				return next(ctx)
 			},
-			Concurrent: func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error) {
-				return next(ctx)
-			},
-			Logged: func(ctx context.Context, obj any, next graphql.Resolver, id string) (any, error) {
+			Logged: func(ctx context.Context, obj interface{}, next graphql.Resolver, id string) (interface{}, error) {
 				return next(context.WithValue(ctx, ckey("request_id"), &id))
 			},
-			ToNull: func(ctx context.Context, obj any, next graphql.Resolver) (any, error) {
+			ToNull: func(ctx context.Context, obj interface{}, next graphql.Resolver) (interface{}, error) {
 				return nil, nil
 			},
-			Populate: func(ctx context.Context, obj any, next graphql.Resolver, value string) (any, error) {
-				res, err := next(ctx)
-				if err != nil {
-					return nil, err
-				}
-
-				if !isNil(res) {
-					return res, err
-				}
-
-				return &value, nil
-			},
-			Noop: func(ctx context.Context, obj any, next graphql.Resolver) (any, error) {
+			Directive1: func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error) {
 				return next(ctx)
 			},
-			Directive1: func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error) {
+			Directive2: func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error) {
 				return next(ctx)
 			},
-			Directive2: func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error) {
+			Directive3: func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error) {
 				return next(ctx)
 			},
-			Directive3: func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error) {
-				return next(ctx)
-			},
-			Order1: func(ctx context.Context, obj any, next graphql.Resolver, location string) (res any, err error) {
+			Order1: func(ctx context.Context, obj interface{}, next graphql.Resolver, location string) (res interface{}, err error) {
 				order := []string{location}
 				res, err = next(ctx)
 				od := res.(*ObjectDirectives)
 				od.Order = append(order, od.Order...)
 				return od, err
 			},
-			Order2: func(ctx context.Context, obj any, next graphql.Resolver, location string) (res any, err error) {
+			Order2: func(ctx context.Context, obj interface{}, next graphql.Resolver, location string) (res interface{}, err error) {
 				order := []string{location}
 				res, err = next(ctx)
 				od := res.(*ObjectDirectives)
@@ -236,12 +184,12 @@ func TestDirectives(t *testing.T) {
 		},
 	}))
 
-	srv.AroundFields(func(ctx context.Context, next graphql.Resolver) (res any, err error) {
+	srv.AroundFields(func(ctx context.Context, next graphql.Resolver) (res interface{}, err error) {
 		path, _ := ctx.Value(ckey("path")).([]int)
 		return next(context.WithValue(ctx, ckey("path"), append(path, 1)))
 	})
 
-	srv.AroundFields(func(ctx context.Context, next graphql.Resolver) (res any, err error) {
+	srv.AroundFields(func(ctx context.Context, next graphql.Resolver) (res interface{}, err error) {
 		path, _ := ctx.Value(ckey("path")).([]int)
 		return next(context.WithValue(ctx, ckey("path"), append(path, 2)))
 	})
@@ -276,7 +224,7 @@ func TestDirectives(t *testing.T) {
 
 			err := c.Post(`query { directiveNullableArg }`, &resp)
 
-			require.NoError(t, err)
+			require.Nil(t, err)
 			require.Equal(t, "Ok", *resp.DirectiveNullableArg)
 		})
 		t.Run("when function success on valid nullable arg directives", func(t *testing.T) {
@@ -286,7 +234,7 @@ func TestDirectives(t *testing.T) {
 
 			err := c.Post(`query { directiveNullableArg(arg: 1) }`, &resp)
 
-			require.NoError(t, err)
+			require.Nil(t, err)
 			require.Equal(t, "Ok", *resp.DirectiveNullableArg)
 		})
 		t.Run("when function success", func(t *testing.T) {
@@ -296,19 +244,8 @@ func TestDirectives(t *testing.T) {
 
 			err := c.Post(`query { directiveArg(arg: "test") }`, &resp)
 
-			require.NoError(t, err)
+			require.Nil(t, err)
 			require.Equal(t, "Ok", *resp.DirectiveArg)
-		})
-
-		t.Run("directive is not called with null arguments", func(t *testing.T) {
-			var resp struct {
-				DirectiveSingleNullableArg *string
-			}
-
-			err := c.Post(`query { directiveSingleNullableArg }`, &resp)
-
-			require.NoError(t, err)
-			require.Equal(t, "Ok", *resp.DirectiveSingleNullableArg)
 		})
 	})
 	t.Run("field definition directives", func(t *testing.T) {
@@ -364,7 +301,7 @@ func TestDirectives(t *testing.T) {
 
 			c.MustPost(`query { directiveField@logged(id:"testes_id") }`, &resp)
 
-			require.Equal(t, `testes_id`, resp.DirectiveField)
+			require.Equal(t, resp.DirectiveField, `testes_id`)
 		})
 		t.Run("without field directive", func(t *testing.T) {
 			var resp struct {
@@ -452,7 +389,7 @@ func TestDirectives(t *testing.T) {
 
 			require.NoError(t, err)
 			require.Equal(t, "Ok", resp.DirectiveObject.Text)
-			require.Nil(t, resp.DirectiveObject.NullableText)
+			require.True(t, resp.DirectiveObject.NullableText == nil)
 			require.Equal(t, "Query_field", resp.DirectiveObject.Order[0])
 			require.Equal(t, "order2_1", resp.DirectiveObject.Order[1])
 			require.Equal(t, "order1_2", resp.DirectiveObject.Order[2])
@@ -468,28 +405,8 @@ func TestDirectives(t *testing.T) {
 			err := c.Post(`query { directiveObjectWithCustomGoModel{ nullableText } }`, &resp)
 
 			require.NoError(t, err)
-			require.Nil(t, resp.DirectiveObjectWithCustomGoModel.NullableText)
+			require.True(t, resp.DirectiveObjectWithCustomGoModel.NullableText == nil)
 		})
-	})
-	t.Run("concurrent directive", func(t *testing.T) {
-		var resp struct {
-			DirectiveConcurrent []struct {
-				Key int
-			}
-		}
-
-		err := c.Post(`query { directiveConcurrent{ key } }`, &resp)
-		slices.SortFunc(resp.DirectiveConcurrent, func(a, b struct{ Key int }) int {
-			return cmp.Compare(a.Key, b.Key)
-		})
-
-		keys := make([]int, 0, len(resp.DirectiveConcurrent))
-		for _, dc := range resp.DirectiveConcurrent {
-			keys = append(keys, dc.Key)
-		}
-
-		require.NoError(t, err)
-		require.Equal(t, []int{1, 2}, keys)
 	})
 
 	t.Run("Subscription directives", func(t *testing.T) {
@@ -522,6 +439,7 @@ func TestDirectives(t *testing.T) {
 				err := c.WebsocketOnce(`subscription { directiveNullableArg }`, &resp)
 
 				require.NoError(t, err)
+				require.NotNil(t, resp.DirectiveNullableArg)
 				require.Equal(t, "Ok", *resp.DirectiveNullableArg)
 			})
 			t.Run("when function success on valid nullable arg directives", func(t *testing.T) {
@@ -532,6 +450,7 @@ func TestDirectives(t *testing.T) {
 				err := c.WebsocketOnce(`subscription { directiveNullableArg(arg: 1) }`, &resp)
 
 				require.NoError(t, err)
+				require.NotNil(t, resp.DirectiveNullableArg)
 				require.Equal(t, "Ok", *resp.DirectiveNullableArg)
 			})
 			t.Run("when function success", func(t *testing.T) {
@@ -542,6 +461,7 @@ func TestDirectives(t *testing.T) {
 				err := c.WebsocketOnce(`subscription { directiveArg(arg: "test") }`, &resp)
 
 				require.NoError(t, err)
+				require.NotNil(t, resp.DirectiveArg)
 				require.Equal(t, "Ok", *resp.DirectiveArg)
 			})
 		})

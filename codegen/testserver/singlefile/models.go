@@ -2,7 +2,7 @@ package singlefile
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"io"
 )
 
@@ -27,11 +27,11 @@ type Error struct {
 }
 
 func (Error) ErrorOnRequiredField() (string, error) {
-	return "", errors.New("boom")
+	return "", fmt.Errorf("boom")
 }
 
 func (Error) ErrorOnNonRequiredField() (string, error) {
-	return "", errors.New("boom")
+	return "", fmt.Errorf("boom")
 }
 
 func (Error) NilOnRequiredField() *string {
@@ -49,7 +49,7 @@ type EmbeddedPointer struct {
 
 type MarshalPanic string
 
-func (m *MarshalPanic) UnmarshalGQL(v any) error {
+func (m *MarshalPanic) UnmarshalGQL(v interface{}) error {
 	panic("BOOM")
 }
 

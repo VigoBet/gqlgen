@@ -19,9 +19,9 @@ func TestErrorInsideMutationArgument(t *testing.T) {
 	c := client.New(handler.NewDefaultServer(NewExecutableSchema(Config{Resolvers: resolvers})))
 
 	t.Run("mutation with correct input doesn't return error", func(t *testing.T) {
-		var resp map[string]any
-		input := map[string]any{
-			"nesting": map[string]any{
+		var resp map[string]interface{}
+		input := map[string]interface{}{
+			"nesting": map[string]interface{}{
 				"field": "email@example.com",
 			},
 		}
@@ -30,14 +30,14 @@ func TestErrorInsideMutationArgument(t *testing.T) {
 			&resp,
 			client.Var("input", input),
 		)
-		require.Equal(t, "Hello world", resp["updateSomething"])
+		require.Equal(t, resp["updateSomething"], "Hello world")
 		require.NoError(t, err)
 	})
 
 	t.Run("mutation with incorrect input returns full path", func(t *testing.T) {
-		var resp map[string]any
-		input := map[string]any{
-			"nesting": map[string]any{
+		var resp map[string]interface{}
+		input := map[string]interface{}{
+			"nesting": map[string]interface{}{
 				"field": "not-an-email",
 			},
 		}

@@ -2,7 +2,7 @@ package api
 
 import (
 	"os"
-	"path/filepath"
+	"path"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -11,42 +11,50 @@ import (
 )
 
 func cleanup(workDir string) {
-	_ = os.Remove(filepath.Join(workDir, "server.go"))
-	_ = os.Remove(filepath.Join(workDir, "graph", "generated.go"))
-	_ = os.Remove(filepath.Join(workDir, "graph", "resolver.go"))
-	_ = os.Remove(filepath.Join(workDir, "graph", "federation.go"))
-	_ = os.Remove(filepath.Join(workDir, "graph", "schema.resolvers.go"))
-	_ = os.Remove(filepath.Join(workDir, "graph", "model", "models_gen.go"))
+	_ = os.Remove(path.Join(workDir, "server.go"))
+	_ = os.RemoveAll(path.Join(workDir, "graph", "generated"))
+	_ = os.Remove(path.Join(workDir, "graph", "resolver.go"))
+	_ = os.Remove(path.Join(workDir, "graph", "schema.resolvers.go"))
+	_ = os.Remove(path.Join(workDir, "graph", "model", "models_gen.go"))
 }
 
 func TestGenerate(t *testing.T) {
-	wd, err := os.Getwd()
-	require.NoError(t, err)
+	wd, _ := os.Getwd()
+	type args struct {
+		workDir string
+	}
 	tests := []struct {
 		name    string
-		workDir string
+		args    args
+		wantErr bool
 	}{
 		{
-			name:    "default",
-			workDir: filepath.Join(wd, "testdata", "default"),
+			name: "default",
+			args: args{
+				workDir: path.Join(wd, "testdata", "default"),
+			},
+			wantErr: false,
 		},
 		{
-			name:    "federation2",
-			workDir: filepath.Join(wd, "testdata", "federation2"),
+			name: "federation2",
+			args: args{
+				workDir: path.Join(wd, "testdata", "federation2"),
+			},
+			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Cleanup(func() {
-				cleanup(tt.workDir)
+			defer func() {
+				cleanup(tt.args.workDir)
 				_ = os.Chdir(wd)
-			})
-			err = os.Chdir(tt.workDir)
-			require.NoError(t, err)
+			}()
+			_ = os.Chdir(tt.args.workDir)
 			cfg, err := config.LoadConfigFromDefaultLocations()
-			require.NoError(t, err, "failed to load config")
-			err = Generate(cfg)
-			require.NoError(t, err, "failed to generate code")
+			require.Nil(t, err, "failed to load config")
+			if err := Generate(cfg); (err != nil) != tt.wantErr {
+				t.Errorf("Generate() error = %v, wantErr %v", err, tt.wantErr)
+			}
 		})
 	}
 }

@@ -3,12 +3,10 @@ package handler
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"time"
 
-	"github.com/vektah/gqlparser/v2/ast"
 	"github.com/vektah/gqlparser/v2/gqlerror"
 
 	"github.com/99designs/gqlgen/graphql"
@@ -42,11 +40,11 @@ func NewDefaultServer(es graphql.ExecutableSchema) *Server {
 	srv.AddTransport(transport.POST{})
 	srv.AddTransport(transport.MultipartForm{})
 
-	srv.SetQueryCache(lru.New[*ast.QueryDocument](1000))
+	srv.SetQueryCache(lru.New(1000))
 
 	srv.Use(extension.Introspection{})
 	srv.Use(extension.AutomaticPersistedQuery{
-		Cache: lru.New[string](100),
+		Cache: lru.New(100),
 	})
 
 	return srv
@@ -64,12 +62,8 @@ func (s *Server) SetRecoverFunc(f graphql.RecoverFunc) {
 	s.exec.SetRecoverFunc(f)
 }
 
-func (s *Server) SetQueryCache(cache graphql.Cache[*ast.QueryDocument]) {
+func (s *Server) SetQueryCache(cache graphql.Cache) {
 	s.exec.SetQueryCache(cache)
-}
-
-func (s *Server) SetParserTokenLimit(limit int) {
-	s.exec.SetParserTokenLimit(limit)
 }
 
 func (s *Server) Use(extension graphql.HandlerExtension) {
@@ -113,7 +107,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			resp := &graphql.Response{Errors: []*gqlerror.Error{gqlErr}}
 			b, _ := json.Marshal(resp)
 			w.WriteHeader(http.StatusUnprocessableEntity)
-			_, _ = w.Write(b)
+			w.Write(b)
 		}
 	}()
 
@@ -134,10 +128,10 @@ func sendError(w http.ResponseWriter, code int, errors ...*gqlerror.Error) {
 	if err != nil {
 		panic(err)
 	}
-	_, _ = w.Write(b)
+	w.Write(b)
 }
 
-func sendErrorf(w http.ResponseWriter, code int, format string, args ...any) {
+func sendErrorf(w http.ResponseWriter, code int, format string, args ...interface{}) {
 	sendError(w, code, &gqlerror.Error{Message: fmt.Sprintf(format, args...)})
 }
 
@@ -149,7 +143,7 @@ func (r OperationFunc) ExtensionName() string {
 
 func (r OperationFunc) Validate(schema graphql.ExecutableSchema) error {
 	if r == nil {
-		return errors.New("OperationFunc can not be nil")
+		return fmt.Errorf("OperationFunc can not be nil")
 	}
 	return nil
 }
@@ -166,7 +160,7 @@ func (r ResponseFunc) ExtensionName() string {
 
 func (r ResponseFunc) Validate(schema graphql.ExecutableSchema) error {
 	if r == nil {
-		return errors.New("ResponseFunc can not be nil")
+		return fmt.Errorf("ResponseFunc can not be nil")
 	}
 	return nil
 }
@@ -175,7 +169,7 @@ func (r ResponseFunc) InterceptResponse(ctx context.Context, next graphql.Respon
 	return r(ctx, next)
 }
 
-type FieldFunc func(ctx context.Context, next graphql.Resolver) (res any, err error)
+type FieldFunc func(ctx context.Context, next graphql.Resolver) (res interface{}, err error)
 
 func (f FieldFunc) ExtensionName() string {
 	return "InlineFieldFunc"
@@ -183,11 +177,11 @@ func (f FieldFunc) ExtensionName() string {
 
 func (f FieldFunc) Validate(schema graphql.ExecutableSchema) error {
 	if f == nil {
-		return errors.New("FieldFunc can not be nil")
+		return fmt.Errorf("FieldFunc can not be nil")
 	}
 	return nil
 }
 
-func (f FieldFunc) InterceptField(ctx context.Context, next graphql.Resolver) (res any, err error) {
+func (f FieldFunc) InterceptField(ctx context.Context, next graphql.Resolver) (res interface{}, err error) {
 	return f(ctx, next)
 }

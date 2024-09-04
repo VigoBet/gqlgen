@@ -1,9 +1,3 @@
-directive @goField(
-    forceResolver: Boolean
-    name: String
-    omittable: Boolean
-) on INPUT_FIELD_DEFINITION | FIELD_DEFINITION
-
 extend type Query {
     me: User
 }
@@ -15,7 +9,7 @@ type EmailHost @key(fields: "id") {
 
 type User @key(fields: "id") {
     id: ID!
-    host: EmailHost! @goField(forceResolver: true)
+    host: EmailHost!
     email: String!
     username: String!
 }

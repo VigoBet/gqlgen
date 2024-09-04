@@ -2,7 +2,7 @@ package followschema
 
 import (
 	"encoding/json"
-	"errors"
+	"fmt"
 	"io"
 	"regexp"
 )
@@ -11,13 +11,13 @@ var re = regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-
 
 type Email string
 
-func (value *Email) UnmarshalGQL(v any) error {
+func (value *Email) UnmarshalGQL(v interface{}) error {
 	input, ok := v.(string)
 	if !ok {
-		return errors.New("email expects a string value")
+		return fmt.Errorf("email expects a string value")
 	}
 	if !re.MatchString(input) {
-		return errors.New("invalid email format")
+		return fmt.Errorf("invalid email format")
 	}
 	*value = Email(input)
 	return nil

@@ -1,8 +1,8 @@
 package resolvergen
 
 import (
+	"fmt"
 	"os"
-	"strings"
 	"syscall"
 	"testing"
 
@@ -23,7 +23,9 @@ func TestLayoutSingleFile(t *testing.T) {
 	require.NoError(t, cfg.Init())
 
 	data, err := codegen.BuildData(cfg)
-	require.NoError(t, err)
+	if err != nil {
+		panic(err)
+	}
 
 	require.NoError(t, p.GenerateCode(data))
 	assertNoErrors(t, "github.com/99designs/gqlgen/plugin/resolvergen/testdata/singlefile/out")
@@ -74,7 +76,9 @@ func TestOmitTemplateComment(t *testing.T) {
 	require.NoError(t, cfg.Init())
 
 	data, err := codegen.BuildData(cfg)
-	require.NoError(t, err)
+	if err != nil {
+		panic(err)
+	}
 
 	require.NoError(t, p.GenerateCode(data))
 	assertNoErrors(t, "github.com/99designs/gqlgen/plugin/resolvergen/testdata/omit_template_comment/out")
@@ -90,7 +94,9 @@ func TestResolver_Implementation(t *testing.T) {
 	require.NoError(t, cfg.Init())
 
 	data, err := codegen.BuildData(cfg, &implementorTest{})
-	require.NoError(t, err)
+	if err != nil {
+		panic(err)
+	}
 
 	require.NoError(t, p.GenerateCode(data))
 	assertNoErrors(t, "github.com/99designs/gqlgen/plugin/resolvergen/testdata/resolver_implementor/out")
@@ -105,7 +111,9 @@ func TestCustomResolverTemplate(t *testing.T) {
 	require.NoError(t, cfg.Init())
 
 	data, err := codegen.BuildData(cfg)
-	require.NoError(t, err)
+	if err != nil {
+		panic(err)
+	}
 
 	require.NoError(t, p.GenerateCode(data))
 }
@@ -120,7 +128,9 @@ func testFollowSchemaPersistence(t *testing.T, dir string) {
 	require.NoError(t, cfg.Init())
 
 	data, err := codegen.BuildData(cfg)
-	require.NoError(t, err)
+	if err != nil {
+		panic(err)
+	}
 
 	require.NoError(t, p.GenerateCode(data))
 	assertNoErrors(t, "github.com/99designs/gqlgen/plugin/resolvergen/"+dir+"/out")
@@ -135,22 +145,24 @@ func assertNoErrors(t *testing.T, pkg string) {
 			packages.NeedTypes |
 			packages.NeedTypesSizes,
 	}, pkg)
-	require.NoError(t, err)
+	if err != nil {
+		panic(err)
+	}
 
-	var errFilePos []string
-	var errors []packages.Error
+	hasErrors := false
 	for _, pkg := range pkgs {
-		errors = append(errors, pkg.Errors...)
 		for _, err := range pkg.Errors {
-			errFilePos = append(errFilePos, err.Pos+":"+err.Msg)
+			hasErrors = true
+			fmt.Println(err.Pos + ":" + err.Msg)
 		}
 	}
-	require.Emptyf(t, errors, "There are compilation errors:\n"+
-		strings.Join(errFilePos, "\n"))
+	if hasErrors {
+		t.Fatal("see compilation errors above")
+	}
 }
 
 type implementorTest struct{}
 
-func (i *implementorTest) Implement(_ string, _ *codegen.Field) string {
+func (i *implementorTest) Implement(field *codegen.Field) string {
 	return "panic(\"implementor implemented me\")"
 }
